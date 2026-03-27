@@ -1,0 +1,27 @@
+SovereignShift — Admin Consent Links
+Generated: 2026-03-26 22:20:24
+
+============================================================
+
+Source Tenant (Commercial)
+TenantId      : 1077cd1d-737e-4060-bc8c-979e20c860ec
+ClientId      : b9130eda-ccc7-49d4-be98-767fe85c49dd
+Cert Thumbprint: C3BC0850835F581FA7BA462063A0526C8231599C
+Cert Expiry    : 2028-03-26
+
+Consent URL:
+https://login.microsoftonline.com/1077cd1d-737e-4060-bc8c-979e20c860ec/adminconsent?client_id=b9130eda-ccc7-49d4-be98-767fe85c49dd
+
+------------------------------------------------------------
+
+INSTRUCTIONS
+------------------------------------------------------------
+1. Send the consent URL for each tenant to a Global Admin of that tenant.
+2. The admin must sign in and click 'Accept' to grant the required permissions.
+3. Once both tenants have consented, SovereignShift is ready to run.
+
+Required Permissions:
+  - Mailbox.Migration
+  - Mail.ReadWrite
+  - Contacts.ReadWrite
+  - User.Read.All

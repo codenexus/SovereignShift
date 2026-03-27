@@ -35,14 +35,9 @@
 #>
 
 #Requires -Version 7.4
-#Requires -Modules Microsoft.Graph.Beta
 
-# PSScriptAnalyzer suppression rules
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
-    Justification = 'Interactive TUI tool — Write-Host color output is intentional')]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
-    Justification = 'Standalone script — ShouldProcess not required outside module context')]
-
+# PSScriptAnalyzer suppressions — Write-Host is intentional for TUI color output
+# pssa:disable PSAvoidUsingWriteHost, PSUseShouldProcessForStateChangingFunctions
 [CmdletBinding()]
 param (
     [ValidateSet('Source', 'Destination', 'Both')]
@@ -58,6 +53,9 @@ param (
     [ValidateSet('Commercial', 'GCCH')]
     [string]$DestCloud = 'GCCH'
 )
+
+Import-Module Microsoft.Graph.Beta.Applications -ErrorAction Stop
+Import-Module Microsoft.Graph.Beta.Identity.DirectoryManagement -ErrorAction Stop
 
 #region Constants
 
@@ -243,34 +241,56 @@ function Get-GraphPermissionId {
     param(
         [string]$Cloud
     )
-
-    Write-Status "Resolving Microsoft Graph permission IDs for $Cloud..."
-
+    Write-Status "Resolving permission IDs for $Cloud..."
     try {
-        # Get the Microsoft Graph service principal to resolve permission IDs
+        # Get the Microsoft Graph service principal
         $graphSp = Get-MgBetaServicePrincipal -Filter "displayName eq 'Microsoft Graph'" -Top 1
-
         if (-not $graphSp) {
             throw "Could not locate Microsoft Graph service principal in tenant."
         }
 
-        $permissionIds = @{}
+        # Get the Exchange Online service principal (hosts Mailbox.Migration)
+        $exchangeSp = Get-MgBetaServicePrincipal -Filter "appId eq '00000002-0000-0ff1-ce00-000000000000'" -Top 1
+        if (-not $exchangeSp) {
+            throw "Could not locate Exchange Online service principal in tenant."
+        }
 
-        foreach ($permission in $Script:RequiredPermissions) {
+        $graphPermissions    = @{}
+        $exchangePermissions = @{}
+
+        # Resolve Graph-hosted permissions (everything except Mailbox.Migration)
+        $graphScoped = $Script:RequiredPermissions | Where-Object { $_ -ne 'Mailbox.Migration' }
+        foreach ($permission in $graphScoped) {
             $appRole = $graphSp.AppRoles | Where-Object {
                 $_.Value -eq $permission -and $_.AllowedMemberTypes -contains 'Application'
             }
-
             if ($appRole) {
-                $permissionIds[$permission] = $appRole.Id
-                Write-Status "Resolved: $permission -> $($appRole.Id)" -Type Info
+                $graphPermissions[$permission] = $appRole.Id
+                Write-Status "Resolved (Graph)    : $permission -> $($appRole.Id)" -Type Info
             }
             else {
-                Write-Status "Could not resolve permission: $permission" -Type Warning
+                Write-Status "Could not resolve Graph permission: $permission" -Type Warning
             }
         }
 
-        return $permissionIds
+        # Resolve Exchange-hosted Mailbox.Migration
+        $exchangeRole = $exchangeSp.AppRoles | Where-Object {
+            $_.Value -eq 'Mailbox.Migration' -and $_.AllowedMemberTypes -contains 'Application'
+        }
+        if ($exchangeRole) {
+            $exchangePermissions['Mailbox.Migration'] = $exchangeRole.Id
+            Write-Status "Resolved (Exchange) : Mailbox.Migration -> $($exchangeRole.Id)" -Type Info
+        }
+        else {
+            Write-Status "Could not resolve Exchange permission: Mailbox.Migration" -Type Warning
+        }
+
+        return [PSCustomObject]@{
+            GraphAppId          = $graphSp.AppId
+            ExchangeAppId       = $exchangeSp.AppId
+            GraphPermissions    = $graphPermissions
+            ExchangePermissions = $exchangePermissions
+        }
     }
     catch {
         Write-Status "Failed to resolve permission IDs: $_" -Type Error
@@ -346,23 +366,33 @@ function Register-SovereignShiftApp {
         EndDateTime     = $cert.NotAfter.ToString('o')
     }
 
-    # Resolve permission IDs from Graph
+    # Resolve permission IDs from Graph and Exchange
     $permissionIds = Get-GraphPermissionId -Cloud $Cloud
 
-    # Build required resource access block
-    $resourceAccess = foreach ($permission in $Script:RequiredPermissions) {
-        if ($permissionIds.ContainsKey($permission)) {
-            @{
-                Id   = $permissionIds[$permission]
-                Type = 'Role'  # 'Role' = Application permission
-            }
+    # Build Graph resource access block
+    $resourceAccessGraph = foreach ($permission in $permissionIds.GraphPermissions.Keys) {
+        @{
+            Id   = $permissionIds.GraphPermissions[$permission]
+            Type = 'Role'
+        }
+    }
+
+    # Build Exchange resource access block
+    $resourceAccessExchange = foreach ($permission in $permissionIds.ExchangePermissions.Keys) {
+        @{
+            Id   = $permissionIds.ExchangePermissions[$permission]
+            Type = 'Role'
         }
     }
 
     $requiredResourceAccess = @(
         @{
-            ResourceAppId  = '00000003-0000-0000-c000-000000000000'  # Microsoft Graph
-            ResourceAccess = @($resourceAccess)
+            ResourceAppId  = $permissionIds.GraphAppId
+            ResourceAccess = @($resourceAccessGraph)
+        }
+        @{
+            ResourceAppId  = $permissionIds.ExchangeAppId
+            ResourceAccess = @($resourceAccessExchange)
         }
     )
 
