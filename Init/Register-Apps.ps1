@@ -400,10 +400,16 @@ function Register-SovereignShiftApp {
     Write-Status "Creating app registration: $appName..."
 
     try {
+        $redirectUri = switch ($Cloud) {
+            'Commercial' { 'https://login.microsoftonline.com/common/oauth2/nativeclient' }
+            'GCCH'       { 'https://login.microsoftonline.us/common/oauth2/nativeclient' }
+        }
+
         $newApp = New-MgBetaApplication -DisplayName $appName `
             -KeyCredentials @($keyCredential) `
             -RequiredResourceAccess $requiredResourceAccess `
-            -SignInAudience 'AzureADMyOrg'
+            -SignInAudience 'AzureADMyOrg' `
+            -PublicClient @{ RedirectUris = @($redirectUri) }
 
         Write-Status "App registration created successfully." -Type Success
         Write-Status "App Name   : $($newApp.DisplayName)" -Type Info
@@ -509,7 +515,8 @@ function New-ConsentUrl {
         'GCCH'       { 'https://login.microsoftonline.us' }
     }
 
-    $consentUrl = "$baseUrl/$TenantId/adminconsent?client_id=$ClientId"
+    $redirectUri = "$baseUrl/common/oauth2/nativeclient"
+    $consentUrl  = "$baseUrl/$TenantId/adminconsent?client_id=$ClientId&redirect_uri=$redirectUri"
 
     return [PSCustomObject]@{
         TenantRole = $TenantRole
