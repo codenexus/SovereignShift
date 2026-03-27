@@ -462,7 +462,7 @@ function Connect-TenantGraph {
     }
 
     try {
-        Connect-MgGraph @connectParams -NoWelcome
+        Connect-MgGraph @connectParams -NoWelcome | Out-Null
         Write-Status "Connected to $TenantRole tenant successfully." -Type Success
 
         # Verify we connected to the correct tenant

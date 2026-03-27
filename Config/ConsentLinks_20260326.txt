@@ -1,16 +1,16 @@
 SovereignShift — Admin Consent Links
-Generated: 2026-03-26 22:20:24
+Generated: 2026-03-26 22:38:05
 
 ============================================================
 
 Source Tenant (Commercial)
 TenantId      : 1077cd1d-737e-4060-bc8c-979e20c860ec
-ClientId      : b9130eda-ccc7-49d4-be98-767fe85c49dd
-Cert Thumbprint: C3BC0850835F581FA7BA462063A0526C8231599C
+ClientId      : df4e0e16-025b-467c-ab9e-a653b188f090
+Cert Thumbprint: 7F2670174C91066923BF2CFCB36038C4BEE97783
 Cert Expiry    : 2028-03-26
 
 Consent URL:
-https://login.microsoftonline.com/1077cd1d-737e-4060-bc8c-979e20c860ec/adminconsent?client_id=b9130eda-ccc7-49d4-be98-767fe85c49dd
+https://login.microsoftonline.com/1077cd1d-737e-4060-bc8c-979e20c860ec/adminconsent?client_id=df4e0e16-025b-467c-ab9e-a653b188f090
 
 ------------------------------------------------------------
 
