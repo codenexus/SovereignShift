@@ -1,0 +1,28 @@
+# Config files with secrets
+Config/orchestrator.config.json
+Config/*.pfx
+Config/*.cer
+
+# Migration working files
+*.csv
+!Templates/*.csv
+
+# Log files
+*.log
+Logs/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PowerShell test output
+TestResults/
+Pester/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Temp files
+*.tmp
+*.bak
